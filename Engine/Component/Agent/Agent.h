@@ -42,9 +42,9 @@ namespace Wanted
 		void ClearLists();
 
 	private:
-		std::priority_queue<Node*> openList;
+		std::vector<Node*> openList;
 
-		std::priority_queue<Node*> closedList;
+		std::vector<Node*> closedList;
 
 		Node* startNode = nullptr;
 	};
