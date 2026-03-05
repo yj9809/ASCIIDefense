@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="ASCIIDefense/ASCIIDefense.vcxproj" Id="2151a74a-ee18-4306-b5bf-2ea0182bdcaa" />
+  <Project Path="Engine/Engine.vcxproj" Id="74735664-3a6a-4f8a-a2f4-40c1bf87a0dc" />
+</Solution>

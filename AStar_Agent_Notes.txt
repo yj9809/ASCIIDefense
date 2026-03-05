@@ -1,0 +1,39 @@
+﻿[A* Agent 뼈대 보완 정리]
+
+1) FindPath 시그니처 const 정리
+- grid를 읽기 전용으로 사용한다면 const 참조로 받는 것이 안전함.
+- 권장:
+  bool FindPath(const Vector2& start, const Vector2& target,
+                const std::vector<std::vector<int>>& grid,
+                std::vector<Vector2>& outPath);
+
+2) A* 필수 버퍼
+- gScore (시작점 -> 현재 노드 실제 비용)
+- fScore (g + heuristic)
+- cameFrom (부모 좌표 저장)
+- closed (방문 확정 여부)
+
+3) open/closed 자료구조 개선
+- openList를 단순 Vector2 리스트로 두면 최소 f 선택이 비효율적임.
+- open은 최소 힙(priority queue) 권장: (x, y, f)
+- closed는 std::vector<Vector2>보다 2D bool 배열이 빠르고 단순함.
+
+4) 필수 헬퍼 함수
+- Heuristic(a, b): 맨해튼 거리(abs(dx) + abs(dy))
+- InBounds(x, y, grid)
+- IsWalkable(x, y, grid)
+- GetNeighbors(x, y, ...)
+- ResetBuffers(...)
+
+5) ConstructPath 시그니처 보완
+- target만 받아서는 부모 정보 출처가 불분명함.
+- cameFrom을 인자로 받거나, 멤버로 명확히 유지해야 함.
+
+6) 좌표 타입 분리 권장
+- Vector2가 float 기반이면 grid 인덱싱 시 위험.
+- 경로탐색 전용 int 좌표 타입(GridPos) 분리 권장.
+
+7) 타워디펜스 연동 포인트
+- 타워 설치/판매/파괴 시에만 재탐색(Event-driven)
+- 설치 검증: 임시 block -> FindPath -> 실패 시 롤백
+
