@@ -114,6 +114,7 @@ xcopy $(OutDir)\Engine.lib ..\Library\Engine\$(Platform)\$(Configuration)\ /e /y
     <ClInclude Include="Common\Common.h" />
     <ClInclude Include="Common\RTTI.h" />
     <ClInclude Include="Component\Agent\Agent.h" />
+    <ClInclude Include="Component\Agent\Node.h" />
     <ClInclude Include="Component\Collision\Collider\BoxCollider2D.h" />
     <ClInclude Include="Component\Collision\System\CollisionSystem.h" />
     <ClInclude Include="Component\Collision\Util\CollisionType.h" />

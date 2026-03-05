@@ -6,6 +6,7 @@
 #include "Math/Color.h"
 #include "Component/Component.h"
 #include "Component/Collision/Collider/BoxCollider2D.h"
+#include "Component/Agent/Agent.h"
 
 #include <vector>
 #include <memory>
