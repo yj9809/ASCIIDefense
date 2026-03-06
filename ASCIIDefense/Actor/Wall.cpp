@@ -1,8 +1,6 @@
 #include "Wall.h"
-namespace Wanted
+
+Wall::Wall(const Vector2& position)
+	: super("#", position, Color::White)
 {
-	Wanted::Wall::Wall(const Vector2& position)
-		: super("#", position, Color::White)
-	{
-	}
 }

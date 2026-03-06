@@ -4,21 +4,15 @@
 
 using namespace Wanted;
 
-class Bullet : public Actor
+class Goal : public Actor
 {
-	RTTI_DECLARATIONS(Bullet, Actor)
+	RTTI_DECLARATIONS(Goal, Actor)
 
 public:
-	Bullet();
+	Goal(const Vector2& position);
 
 	virtual void BeginPlay() override;
-	virtual void Tick(float deltaTime) override;
 
 	virtual void OnCollision(const CollisionEvent& e, Actor* other) override;
-
-private:
-	float moveSpeed = 20.0f;
-
-	float xPosition = 0.0f;
 };
 

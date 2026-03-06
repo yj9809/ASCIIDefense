@@ -7,10 +7,9 @@
 
 using namespace Wanted;
 
-// 헬퍼(Helper) 기능 제공.
 namespace Util
 {
-	// 콘솔 커서 위치 이동(설정)하는 함수.
+
 	inline void SetConsolePosition(const Vector2& position)
 	{
 		SetConsoleCursorPosition(
@@ -19,7 +18,7 @@ namespace Util
 		);
 	}
 
-	// 콘솔 텍스트 설정 함수.
+
 	inline void SetConsoleTextColor(Color color)
 	{
 		SetConsoleTextAttribute(
@@ -28,10 +27,9 @@ namespace Util
 		);
 	}
 
-	// 커서 끄기.
+
 	inline void TurnOffCursor()
 	{
-		// 커서 끄기.
 		CONSOLE_CURSOR_INFO info = {};
 		GetConsoleCursorInfo(
 			GetStdHandle(STD_OUTPUT_HANDLE),
@@ -45,10 +43,9 @@ namespace Util
 		);
 	}
 
-	// 커서 켜기.
+
 	inline void TurnOnCursor()
 	{
-		// 커서 끄기.
 		CONSOLE_CURSOR_INFO info = {};
 		GetConsoleCursorInfo(
 			GetStdHandle(STD_OUTPUT_HANDLE),
@@ -64,21 +61,17 @@ namespace Util
 
 	inline void SetRandomSeed()
 	{
-		// 시간 값을 랜덤 종자값으로 설정.
 		srand(static_cast<unsigned int>(time(nullptr)));
 	}
 
-	// 정수 난수 함수.
 	inline int Random(int min, int max)
 	{
 		int diff = (max - min) + 1;
 		return ((diff * rand()) / (RAND_MAX + 1)) + min;
 	}
 
-	// 부동소수점 난수 함수.
 	inline float RandomRange(float min, float max)
 	{
-		// 0~1 사이의 float 기반 랜덤 값.
 		float random = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
 
 		float diff = (max - min);
@@ -98,7 +91,6 @@ namespace Util
 	}
 }
 
-// 메모리 정리 함수.
 template<typename T>
 void SafeDelete(T*& t)
 {

@@ -52,6 +52,8 @@ namespace Wanted
 		inline void SetOwner(Level* newOwner) { owner = newOwner; }
 		inline Level* GetOwner() const { return owner; }
 
+		inline void SetSortingOrder(int newSortingOrder) { sortingOrder = newSortingOrder; }
+
 		// Getter.
 		inline bool HasBeganPlay() const
 		{

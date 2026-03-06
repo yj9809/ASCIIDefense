@@ -70,23 +70,7 @@ namespace Wanted
 
 				if (CheckCollision(a, b) && CheckMask(a, b))
 				{
-					const bool aBullet = (a.layer == CollisionLayer::Bullet);
-					const bool bBullet = (b.layer == CollisionLayer::Bullet);
-					const bool aEnemy = (a.layer == CollisionLayer::Enemy);
-					const bool bEnemy = (b.layer == CollisionLayer::Enemy);
-					
-					if (aBullet && bEnemy)
-					{
-						events.push_back({ EventType::Stay, a.id, b.id});
-						colliders[i].isEnabled = false;
-						colliders[j].isEnabled = false;
-					}
-					else if (bBullet && aEnemy)
-					{
-						events.push_back({ EventType::Stay, b.id, a.id});
-						colliders[i].isEnabled = false;
-						colliders[j].isEnabled = false;
-					}										
+					events.push_back({ EventType::Stay, b.id, a.id });
 				}
 			}
 		}

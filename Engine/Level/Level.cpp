@@ -26,10 +26,10 @@ namespace Wanted
 		// �迭 �ʱ�ȭ.
 		actors.clear();
 
-		for(Actor*& actor : addRequestedActors)
+		for (Actor*& actor : addRequestedActors)
 		{
 			// ���� ��ü �޸� ����.
-			if(actor)
+			if (actor)
 			{
 				delete actor;
 				actor = nullptr;
@@ -70,9 +70,14 @@ namespace Wanted
 			{
 				Actor* self = FindActorByCollisionID(e.selfID);   // Bullet
 				Actor* other = FindActorByCollisionID(e.otherID); // Enemy
-				if (!self || !other) continue;
+				if (!self || !other) 
+					continue;
 
-				self->OnCollision(e, other); // self만 호출
+				if (!self->IsActive() || !other->IsActive()) 
+					continue;
+
+				self->OnCollision(e, other);
+				other->OnCollision({ e.type, e.otherID, e.selfID }, self);
 			}
 			collisionSystem->events.clear();
 		}
@@ -116,9 +121,9 @@ namespace Wanted
 		//}
 
 		// ���� ��ȸ�ϸ鼭 Draw �Լ� ȣ��.
-		for(Actor* const actor : actors)
+		for (Actor* const actor : actors)
 		{
-			if(!actor->IsActive())
+			if (!actor->IsActive())
 			{
 				continue;
 			}

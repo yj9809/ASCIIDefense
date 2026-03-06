@@ -30,7 +30,10 @@
     <ClCompile Include="Actor\Wall.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="Actor\Ground.cpp">
+    <ClCompile Include="Manager\Spawner.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Actor\Goal.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -47,7 +50,10 @@
     <ClInclude Include="Actor\Wall.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="Actor\Ground.h">
+    <ClInclude Include="Manager\Spawner.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Actor\Goal.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common/RTTI.h"
+#include "Util/Util.h"
 #include "Component/Collision/Util/CollisionType.h"
 
 namespace Wanted

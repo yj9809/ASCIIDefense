@@ -10,6 +10,7 @@ enum class CollisionLayer : CollisionID
 	None = 0,
 	Bullet = 1,
 	Enemy = 2,
+	Goal = 3,
 };
 
 constexpr LayerMask GetLayerMask(CollisionLayer layer)

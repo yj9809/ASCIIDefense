@@ -100,6 +100,7 @@ xcopy $(OutDir)\Engine.lib ..\Library\Engine\$(Platform)\$(Configuration)\ /e /y
   <ItemGroup>
     <ClCompile Include="Actor\Actor.cpp" />
     <ClCompile Include="Component\Agent\Agent.cpp" />
+    <ClCompile Include="Component\Agent\Navigation.cpp" />
     <ClCompile Include="Component\Collision\Collider\BoxCollider2D.cpp" />
     <ClCompile Include="Component\Collision\System\CollisionSystem.cpp" />
     <ClCompile Include="Core\Input.cpp" />
@@ -114,6 +115,7 @@ xcopy $(OutDir)\Engine.lib ..\Library\Engine\$(Platform)\$(Configuration)\ /e /y
     <ClInclude Include="Common\Common.h" />
     <ClInclude Include="Common\RTTI.h" />
     <ClInclude Include="Component\Agent\Agent.h" />
+    <ClInclude Include="Component\Agent\Navigation.h" />
     <ClInclude Include="Component\Agent\Node.h" />
     <ClInclude Include="Component\Collision\Collider\BoxCollider2D.h" />
     <ClInclude Include="Component\Collision\System\CollisionSystem.h" />

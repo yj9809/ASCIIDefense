@@ -29,7 +29,7 @@ namespace Wanted
 	
 	const char* Vector2::ToString()
 	{
-		// ±âÁ¸ ¹®ÀÚ¿­ÀÌ ÀÖ´Ù¸é Á¦°Å.
+		// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ú¿ï¿½ï¿½ï¿½ ï¿½Ö´Ù¸ï¿½ ï¿½ï¿½ï¿½ï¿½.
 		if (string)
 		{
 			delete[] string;

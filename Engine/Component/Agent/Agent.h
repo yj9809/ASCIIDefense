@@ -1,52 +1,47 @@
-#pragma once
+﻿#pragma once
 
 #include "Math/Vector2.h"
-#include "Util/Util.h"
 #include "Node.h"
 #include "Component/Component.h"
 
-#include <queue>
+#include <memory>
 #include <vector>
 
 namespace Wanted
 {
+	class Actor;
+
 	class WANTED_API Agent : public Component
 	{
-	private:
-		struct Direction
+	public:
+		Agent(Actor* owner, std::vector<Vector2> path);
+
+		virtual void OnAdd() override {}
+		virtual void OnRemove() override {}
+	public:
+		void Move();
+
+		Vector2 NextPosition() const;
+
+		bool HasNext() const;
+
+		inline void SetIsMoving(bool moving) { isMoving = moving; }
+
+		// Getter.
+		inline std::vector<Vector2> GetRemainingPath() const
 		{
-			Vector2 offset;
-			float cost;
-		};
-
-	public:
-		~Agent();
-
-	public:
-		bool FindPath(
-			const Vector2& start,
-			const Vector2& target,
-			const std::vector<std::vector<int>>& grid,
-			std::vector<Vector2>& outPath
-		);
-
-		bool IsGridRange(const Vector2& position, const std::vector<std::vector<int>>& grid) const;
-
-		float GetHCost(const Vector2& position, const Vector2& target) const;
-
-		bool IsCloseToTarget(const Vector2& position, float cost) const;
-
-		std::vector<Vector2> ConstructPath(Node* target);
+			if (currentPathIndex < path.size())
+			{
+				return std::vector<Vector2>(path.begin() + currentPathIndex, path.end());
+			}
+			return {};
+		}
 
 	private:
-		void ClearLists();
+		std::vector<Vector2> path;
 
-	private:
-		std::vector<Node*> openList;
+		int currentPathIndex = 0;
 
-		std::vector<Node*> closedList;
-
-		Node* startNode = nullptr;
+		bool isMoving = false;
 	};
 }
-
