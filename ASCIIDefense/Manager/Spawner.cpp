@@ -7,8 +7,10 @@ Spawner::Spawner()
 	Util::SetRandomSeed();
 }
 
-void Spawner::SetPaths(const std::vector<std::vector<int>>& grid, std::vector<Vector2> spawnPoints, std::vector<Vector2> endPoints)
+bool Spawner::SetPaths(const std::vector<std::vector<int>>& grid, std::vector<Vector2> spawnPoints, std::vector<Vector2> endPoints)
 {
+	std::vector<SpawnInfo> newSpawnInfos;
+
 	for (const Vector2& spawn : spawnPoints)
 	{		
 		int ran = Util::Random(0, static_cast<int>(endPoints.size() - 1));
@@ -16,11 +18,11 @@ void Spawner::SetPaths(const std::vector<std::vector<int>>& grid, std::vector<Ve
 		std::vector<Vector2> path;
 
 		if (!navigation->FindPath(spawn, endPoints[ran], grid, path))
-		{
-			__debugbreak();
-			break;
-		}
+			return false;
 
-		spawnInfos.emplace_back(SpawnInfo{ spawn, path });
+		newSpawnInfos.emplace_back(SpawnInfo{ spawn, endPoints[ran], path });
 	}
+
+	spawnInfos = std::move(newSpawnInfos);
+	return true;
 }

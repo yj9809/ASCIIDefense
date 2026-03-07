@@ -3,6 +3,7 @@
 #include "Actor/Enemy.h"
 #include "Actor/Wall.h"
 #include "Actor/Goal.h"
+#include "Actor/Tower.h"
 #include "Render/Renderer.h"
 
 #include "Core/Input.h"
@@ -19,33 +20,24 @@ GameLevel::GameLevel()
 
 void GameLevel::Tick(float deltaTime)
 {
-	if(Input::Get().GetKeyDown('P'))
-		isDebugPath = !isDebugPath;
-
 	MoveEnemies();
-
-	Vector2 mousePos = Input::Get().GetMousePosition();
 
 	super::Tick(deltaTime);
 
 	SpawnEnemies(deltaTime);
 
-	if (isDebugPath)
+	if(Input::Get().GetKeyDown(VK_SPACE))
+		spawnCount = 0;
+
+	DebugPath();
+	
+	if (Input::Get().GetKeyDown('C'))
 	{
-		for (Actor* actor : actors)
-		{
-			if (!actor || !actor->IsActive() || !actor->IsTypeOf<Enemy>()) continue;
-			Enemy* e = static_cast<Enemy*>(actor);
-			std::vector<Vector2> path = e->GetRemainingPath();
-			for (const Vector2& p : path)
-			{
-				Renderer::Get().Submit("*", p, Color::Gray, 0);
-			}
-		}
+		towerCraftMode = (towerCraftMode == TowerCraftMode::None) ? TowerCraftMode::Craft : TowerCraftMode::None;
 	}
 
-	std::string mouseInfo = "Mouse: (" + std::to_string(mousePos.x) + ", " + std::to_string(mousePos.y) + ")";
-	Renderer::Get().Submit(mouseInfo.c_str(), Vector2(mousePos.x, mousePos.y), Color::RedBright, 100);
+	if (towerCraftMode == TowerCraftMode::Craft)
+		TowerCrafting(deltaTime);
 }
 
 void GameLevel::LoadMap(const char* mapFile)
@@ -138,15 +130,17 @@ void GameLevel::SpawnEnemies(float deltaTime)
 {
 	if (spawner)
 	{
-		if (timer > 1.0f && SpawnCount < 10)
+		if (timer > 1.0f && spawnCount < 10)
 		{
+			std::vector<Enemy*> newEnemies;
 			for (const auto& spawnInfo : spawner->GetSpawnInfos())
 			{
-				Enemy* enemy = new Enemy(spawnInfo.path);
+				Enemy* enemy = new Enemy(spawnInfo.path, spawnInfo.endPoint);
 				enemy->SetPosition(spawnInfo.spawnPoint);
 				AddNewActor(enemy);
+				newEnemies.push_back(enemy);
 			}
-			SpawnCount++;
+			spawnCount++;
 			timer = 0.0f;
 		}
 		else
@@ -235,4 +229,118 @@ void GameLevel::MoveEnemies()
 		candidate->SetIsMoving(true);
 		willVacate.insert(from);
 	}
+}
+
+void GameLevel::DebugPath()
+{
+	if (Input::Get().GetKeyDown('P'))
+		isDebugPath = !isDebugPath;
+
+	if (isDebugPath)
+	{
+		for (Actor* actor : actors)
+		{
+			if (!actor || !actor->IsActive() || !actor->IsTypeOf<Enemy>()) continue;
+			Enemy* e = static_cast<Enemy*>(actor);
+			std::vector<Vector2> path = e->GetRemainingPath();
+			for (const Vector2& p : path)
+			{
+				Renderer::Get().Submit("*", p, Color::Gray, 0);
+			}
+		}
+	}
+}
+
+void GameLevel::TowerCrafting(float deltaTime)
+{
+	Vector2 mousePos = Input::Get().GetMousePosition();
+	if (Input::Get().GetKeyDown(VK_LBUTTON))
+	{
+		TryPlaceTower(mousePos); // 설치 시도
+	}
+
+	DrawTowerPreview(mousePos);  // 현재 마우스 프리뷰
+}
+
+bool GameLevel::CanPreviewTowerAt(const Vector2& center) const
+{
+	if (grid.empty()) return false;
+
+	for (int dy = -1; dy <= 1; ++dy)
+	{
+		for (int dx = -1; dx <= 1; ++dx)
+		{
+			int x = center.x + dx;
+			int y = center.y + dy;
+
+			if (y < 0 || y >= static_cast<int>(grid.size())) return false;
+			if (x < 0 || x >= static_cast<int>(grid[y].size())) return false;
+			if (grid[y][x] != 0) return false; // 빈칸만 허용
+		}
+	}
+	return true;
+}
+
+void GameLevel::DrawTowerPreview(const Vector2& center)
+{
+	if (center.x < 0 || center.y < 0) return;
+
+	Color c = CanPreviewTowerAt(center) ? Color::Green : Color::RedBright;
+
+	for (int dy = -1; dy <= 1; ++dy)
+	{
+		for (int dx = -1; dx <= 1; ++dx)
+		{
+			Vector2 p(center.x + dx, center.y + dy);
+			const char* shape = (dx == 0 && dy == 0) ? "T" : "#";
+			Renderer::Get().Submit(shape, p, c, 1000);
+		}
+	}
+}
+
+void GameLevel::TryPlaceTower(const Vector2& center)
+{
+	if (!CanPreviewTowerAt(center)) return;
+
+	auto rollback = [&]()
+		{
+			for (int dy = -1; dy <= 1; ++dy)
+				for (int dx = -1; dx <= 1; ++dx)
+					grid[center.y + dy][center.x + dx] = 0;
+		};
+
+	for (int dy = -1; dy <= 1; ++dy)
+		for (int dx = -1; dx <= 1; ++dx)
+			grid[center.y + dy][center.x + dx] = 2;
+
+	std::vector<std::pair<Enemy*, std::vector<Vector2>>> pending;
+	Navigation nav;
+
+	for (Actor* actor : actors)
+	{
+		if (!actor || !actor->IsActive() || !actor->IsTypeOf<Enemy>()) continue;
+		Enemy* e = static_cast<Enemy*>(actor);
+
+		std::vector<Vector2> newPath;
+		if (!nav.FindPath(*e->GetPosition(), e->GetEndPosition(), grid, newPath))
+		{
+			rollback();
+			return;
+		}
+		pending.emplace_back(e, std::move(newPath));
+	}
+
+	if (!spawner->SetPaths(grid, spawnPoints, endPoints))
+	{
+		rollback();
+		return;
+	}
+
+	for (auto& [enemy, path] : pending)
+	{
+		if (enemy && enemy->IsActive())
+			enemy->SetPath(std::move(path));
+	}
+
+	AddNewActor(new Tower(center));
 }

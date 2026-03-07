@@ -95,6 +95,7 @@
     <ClCompile Include="Actor\Bullet.cpp" />
     <ClCompile Include="Actor\Enemy.cpp" />
     <ClCompile Include="Actor\Goal.cpp" />
+    <ClCompile Include="Actor\Tower.cpp" />
     <ClCompile Include="Actor\Wall.cpp" />
     <ClCompile Include="Level\GameLevel.cpp" />
     <ClCompile Include="Main.cpp" />
@@ -104,6 +105,7 @@
     <ClInclude Include="Actor\Bullet.h" />
     <ClInclude Include="Actor\Enemy.h" />
     <ClInclude Include="Actor\Goal.h" />
+    <ClInclude Include="Actor\Tower.h" />
     <ClInclude Include="Actor\Wall.h" />
     <ClInclude Include="Level\GameLevel.h" />
     <ClInclude Include="Manager\Spawner.h" />

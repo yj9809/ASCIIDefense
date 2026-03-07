@@ -58,6 +58,11 @@ namespace Wanted
 		// ���Ϳ� �̺�Ʈ �긮��.
 		for (Actor* actor : actors)
 		{
+			if (!actor->IsActive())
+			{
+				continue;
+			}
+
 			actor->Tick(deltaTime);
 		}
 

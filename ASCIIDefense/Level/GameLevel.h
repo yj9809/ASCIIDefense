@@ -13,6 +13,13 @@ class Enemy;
 
 class GameLevel : public Level
 {
+private:
+	enum class TowerCraftMode
+	{
+		None,
+		Craft
+	};
+
 	RTTI_DECLARATIONS(GameLevel, Level)
 
 public:
@@ -30,6 +37,15 @@ private:
 
 	void MoveEnemies();
 
+	void DebugPath();
+
+	void TowerCrafting(float deltaTime);
+
+	bool CanPreviewTowerAt(const Vector2& center) const;
+	void DrawTowerPreview(const Vector2& center);
+
+	void TryPlaceTower(const Vector2& center);
+
 private:
 	// 맵 데이터를 저장하는 2D 벡터.
 	// 0: 이동 가능 공간, 1: 벽, 2: 타워, 5: 스폰 지점, 6: 목표 지점.
@@ -44,8 +60,10 @@ private:
 	// 적 생성 관리 객체.
 	std::unique_ptr<Spawner> spawner;
 
+	TowerCraftMode towerCraftMode = TowerCraftMode::None;
+
 	bool isDebugPath = false;
-	int SpawnCount = 0;
+	int spawnCount = 10;
 	float timer = 0.0f;
 };
 

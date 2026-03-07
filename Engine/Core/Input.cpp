@@ -1,4 +1,5 @@
 #include "Input.h"
+
 #include <Windows.h>
 #include <iostream>
 
@@ -9,6 +10,19 @@ namespace Wanted
 	Input::Input()
 	{
 		instance = this;
+
+		HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
+		if (hIn != INVALID_HANDLE_VALUE)
+		{
+			DWORD mode = 0;
+			if (GetConsoleMode(hIn, &mode))
+			{
+				mode |= ENABLE_EXTENDED_FLAGS;   // Quick Edit 제어 가능
+				mode |= ENABLE_MOUSE_INPUT;      // 마우스 이벤트 수신
+				mode &= ~ENABLE_QUICK_EDIT_MODE; // Quick Edit 끄기
+				SetConsoleMode(hIn, mode);
+			}
+		}
 	}
 	
 	Input::~Input()
@@ -34,16 +48,48 @@ namespace Wanted
 
 	Vector2 Input::GetMousePosition() const
 	{
-		POINT point;
-		 if (GetCursorPos(&point))
-		 {
-			 return Vector2(point.x, point.y);
-		 }
-		 else
-		 {
-			 std::cerr << "Failed to get cursor position.\n";
-			 return Vector2::Zero;
-		 }
+		static Vector2 lastPos(-1, -1);
+
+		HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
+		if (hIn == INVALID_HANDLE_VALUE)
+		{
+			return lastPos;
+		}
+
+		DWORD eventsCount = 0;
+		if (!GetNumberOfConsoleInputEvents(hIn, &eventsCount))
+		{
+			return lastPos;
+		}
+
+		while (eventsCount > 0)
+		{
+			INPUT_RECORD rec[64];
+			DWORD read = 0;
+			DWORD toRead = (eventsCount < 64) ? eventsCount : 64;
+
+			if (!ReadConsoleInput(hIn, rec, toRead, &read))
+			{
+				break;
+			}
+
+			for (DWORD i = 0; i < read; ++i)
+			{
+				if (rec[i].EventType == MOUSE_EVENT)
+				{
+					const MOUSE_EVENT_RECORD& m = rec[i].Event.MouseEvent;
+					lastPos.x = m.dwMousePosition.X;
+					lastPos.y = m.dwMousePosition.Y;
+				}
+			}
+
+			if (!GetNumberOfConsoleInputEvents(hIn, &eventsCount))
+			{
+				break;
+			}
+		}
+
+		return lastPos;
 	}
 
 	Input& Input::Get()

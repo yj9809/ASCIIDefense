@@ -3,8 +3,8 @@
 #include "Component/Collision/Util/CollisionType.h"
 #include "Util/Util.h"
 
-Enemy::Enemy(std::vector<Vector2> path)
-	: Actor("E", Vector2::Zero, Color::Red), path(std::move(path))
+Enemy::Enemy(std::vector<Vector2> path, Vector2 endPosition)
+	: Actor("E", Vector2::Zero, Color::Red), path(std::move(path)), endPosition(endPosition)
 {
 }
 
@@ -20,6 +20,11 @@ void Enemy::BeginPlay()
 
 void Enemy::Tick(float deltaTime)
 {
+	if (!IsActive())
+	{
+		return;
+	}
+
 	super::Tick(deltaTime);
 
 	if (agent)
@@ -56,7 +61,7 @@ bool Enemy::HasNext() const
 
 bool Enemy::CanMoveNow() const
 {
-	return timer > 0.05f;
+	return timer > 0.5f;
 }
 
 std::vector<Vector2> Enemy::GetRemainingPath() const

@@ -9,7 +9,7 @@ class Enemy : public Actor
 {
 	RTTI_DECLARATIONS(Enemy, Actor)
 public:
-	Enemy(std::vector<Vector2> path);
+	Enemy(std::vector<Vector2> path, Vector2 endPosition);
 
 	virtual void BeginPlay() override;
 	virtual void Tick(float deltaTime) override;
@@ -26,13 +26,23 @@ public:
 			agent->SetIsMoving(moving);
 	}
 
+	inline void SetPath(std::vector<Vector2> newPath)
+	{
+		if (agent)
+			agent->SetPath(std::move(newPath));
+	}
+
 	// Getter.
 	std::vector<Vector2> GetRemainingPath() const;
+
+	inline const Vector2 GetEndPosition() const { return endPosition; }
 
 private:
 	Agent* agent = nullptr;
 
 	std::vector<Vector2> path;
+
+	Vector2 endPosition;
 
 	float timer = 0.0f;
 };

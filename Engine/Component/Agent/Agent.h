@@ -37,6 +37,14 @@ namespace Wanted
 			return {};
 		}
 
+		// Setter.
+		inline void SetPath(std::vector<Vector2> newPath)
+		{
+			path = std::move(newPath);
+			currentPathIndex = 0;
+			isMoving = false;
+		}
+
 	private:
 		std::vector<Vector2> path;
 
