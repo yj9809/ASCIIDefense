@@ -2,16 +2,12 @@
 #include <Windows.h>
 #include <iostream>
 
-// Ctrl + HomeŰ�� ���� ���� ���� �̵� ����.
-// Rider�� ��� �ڵ� �߰� ����.
 namespace Wanted
 {
-	// ���� ���� �ʱ�ȭ.
 	Input* Input::instance = nullptr;
 
 	Input::Input()
 	{
-		// ��ü�� �ʱ�ȭ�Ǹ� �ڱ� �ڽ��� �ּҸ� ����.
 		instance = this;
 	}
 	
@@ -36,31 +32,34 @@ namespace Wanted
 		return keyStates[keyCode].isKeyDown;
 	}
 
+	Vector2 Input::GetMousePosition() const
+	{
+		POINT point;
+		 if (GetCursorPos(&point))
+		 {
+			 return Vector2(point.x, point.y);
+		 }
+		 else
+		 {
+			 std::cerr << "Failed to get cursor position.\n";
+			 return Vector2::Zero;
+		 }
+	}
+
 	Input& Input::Get()
 	{
-		// �̱���(Singleton).
-		// �� �Լ��� ������ ������Ʈ���� ������.
-		// ���� ������ �̹� �ʱ�ȭ �Ϸ� ����.
 		if (!instance)
 		{
-			//return *nullptr;
 			std::cout << "Error: Input::Get(). instance is null\n";
 
-			// ����� ��忡���� ������.
-			// �ڵ����� �ߴ��� �ɸ�.
 			__debugbreak();
 		}
 
-		// Lazy-Pattern.
-		// ����Ƽ�� C++�� ����.
-		//static Input instance;
 		return *instance;
 	}
 
 	void Input::ProcessInput()
 	{
-		// Ű ������ �Է� �б�.
-		// !!! �ü���� �����ϴ� ����� ����� �� �ۿ� ����.
 		for (int ix = 0; ix < 255; ++ix)
 		{
 			keyStates[ix].isKeyDown
@@ -70,7 +69,6 @@ namespace Wanted
 	
 	void Input::SavePreviousInputStates()
 	{
-		// ���� �Է� ���� ���� �Է� ������ ����.
 		for (int ix = 0; ix < 255; ++ix)
 		{
 			keyStates[ix].wasKeyDown

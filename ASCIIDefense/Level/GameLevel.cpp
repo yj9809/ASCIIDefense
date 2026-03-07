@@ -8,6 +8,7 @@
 #include "Core/Input.h"
 
 #include <iostream>
+#include <string>
 #include <map>
 #include <set>
 
@@ -22,6 +23,8 @@ void GameLevel::Tick(float deltaTime)
 		isDebugPath = !isDebugPath;
 
 	MoveEnemies();
+
+	Vector2 mousePos = Input::Get().GetMousePosition();
 
 	super::Tick(deltaTime);
 
@@ -40,6 +43,9 @@ void GameLevel::Tick(float deltaTime)
 			}
 		}
 	}
+
+	std::string mouseInfo = "Mouse: (" + std::to_string(mousePos.x) + ", " + std::to_string(mousePos.y) + ")";
+	Renderer::Get().Submit(mouseInfo.c_str(), Vector2(mousePos.x, mousePos.y), Color::RedBright, 100);
 }
 
 void GameLevel::LoadMap(const char* mapFile)
@@ -71,9 +77,6 @@ void GameLevel::LoadMap(const char* mapFile)
 	int index = 0;
 
 	Vector2 position;
-
-	/*std::vector<Vector2> startPositions;
-	std::vector<Vector2> endPositions;*/
 
 	std::vector<int> line;
 
