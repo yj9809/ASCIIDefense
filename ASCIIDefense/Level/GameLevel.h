@@ -6,6 +6,7 @@
 
 #include <vector>
 #include <memory>
+#include <functional>
 
 using namespace Wanted;
 
@@ -26,8 +27,11 @@ public:
 	GameLevel();
 
 	virtual void Tick(float deltaTime) override;
+	virtual void Draw() override;
 
 	void LoadMap(const char* mapFile);
+
+	Enemy* FindClosestEnemyInRange(const std::function<bool(const Vector2&)>& inRange, const Vector2& center) const;
 
 	std::vector<std::vector<int>> GetGrid() const { return grid; }
 private:

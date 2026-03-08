@@ -26,11 +26,11 @@ void GameLevel::Tick(float deltaTime)
 
 	SpawnEnemies(deltaTime);
 
-	if(Input::Get().GetKeyDown(VK_SPACE))
+	if (Input::Get().GetKeyDown(VK_SPACE))
 		spawnCount = 0;
 
 	DebugPath();
-	
+
 	if (Input::Get().GetKeyDown('C'))
 	{
 		towerCraftMode = (towerCraftMode == TowerCraftMode::None) ? TowerCraftMode::Craft : TowerCraftMode::None;
@@ -38,6 +38,22 @@ void GameLevel::Tick(float deltaTime)
 
 	if (towerCraftMode == TowerCraftMode::Craft)
 		TowerCrafting(deltaTime);
+}
+
+void GameLevel::Draw()
+{
+	super::Draw();
+
+	for (int y = 0; y < grid.size(); ++y)
+	{
+		for (int x = 0; x < grid[y].size(); ++x)
+		{
+			if (grid[y][x] == 1)
+			{
+				Renderer::Get().Submit("#", Vector2(x, y), Color::White, 0);
+			}
+		}
+	}
 }
 
 void GameLevel::LoadMap(const char* mapFile)
@@ -94,15 +110,12 @@ void GameLevel::LoadMap(const char* mapFile)
 		switch (mapCharacter)
 		{
 		case '#':
-			AddNewActor(new Wall(position));
 			line.emplace_back(1);
 			break;
 		case '.':
-			Renderer::Get().Submit(" ", position, Color::White, 0);
 			line.emplace_back(0);
 			break;
 		case 'S':
-			Renderer::Get().Submit(" ", position, Color::White, 0);
 			line.emplace_back(5);
 			spawnPoints.emplace_back(position);
 			break;
@@ -119,6 +132,37 @@ void GameLevel::LoadMap(const char* mapFile)
 	spawner->SetPaths(grid, spawnPoints, endPoints);
 
 	fclose(file);
+}
+
+Enemy* GameLevel::FindClosestEnemyInRange(const std::function<bool(const Vector2&)>& inRange, const Vector2& center) const
+{
+	Enemy* bestEnemy = nullptr;
+	int bestDistance = INT_MAX;
+
+	for (Actor* actor : actors)
+	{
+		if (!actor || !actor->IsActive() || !actor->IsTypeOf<Enemy>())
+		{
+			continue;
+		}
+
+		Enemy* enemy = static_cast<Enemy*>(actor);
+		const Vector2& enemyPos = *enemy->GetPosition();
+
+		if (!inRange(enemyPos))
+		{
+			continue;
+		}
+
+		int distance = std::abs(enemyPos.x - center.x) + std::abs(enemyPos.y - center.y);
+		if (distance < bestDistance)
+		{
+			bestDistance = distance;
+			bestEnemy = enemy;
+		}
+	}
+
+	return bestEnemy;
 }
 
 void GameLevel::SetGrid(std::vector<int> line)
@@ -179,7 +223,7 @@ void GameLevel::MoveEnemies()
 		}
 
 		toGroups[to].push_back(e);
-	}	
+	}
 
 	// 2) 각 to 그룹 처리
 	for (auto& [to, group] : toGroups)

@@ -1,13 +1,33 @@
+#define NOMINMAX
+
 #include "Bullet.h"
 #include "Actor/Enemy.h"
 #include "Component/Collision/Collider/BoxCollider2D.h"
 #include "Component/Collision/Util/CollisionType.h"
 
+#include <limits>
 
-Bullet::Bullet()
-	: Actor("-", Vector2(0, 5), Color::White)
+static std::vector<char> directionImages = {
+	'\\',
+	'|',
+	'/',
+	'-',
+	'-',
+	'/',
+	'|',
+	'\\'
+};
+
+Bullet::Bullet(const Vector2& towerPos, int index, std::vector<int> dir)
+	: Actor("-", towerPos, Color::White)
 {
+	sortingOrder = 99;
 
+	xPosition = static_cast<float>(towerPos.x);
+	yPosition = static_cast<float>(towerPos.y);
+
+	this->dir = dir;
+	image[0] = directionImages[index];
 }
 
 void Bullet::BeginPlay()
@@ -20,17 +40,18 @@ void Bullet::BeginPlay()
 
 void Bullet::Tick(float deltaTime)
 {
-	xPosition += moveSpeed * deltaTime;
+	xPosition += moveSpeed * deltaTime * dir[0];
+	yPosition += moveSpeed * deltaTime * dir[1];
 
-	SetPosition(Vector2(static_cast<int>(xPosition), position.y));
+	SetPosition(Vector2(std::round(xPosition), std::round(yPosition)));
 }
 
 void Bullet::OnCollision(const CollisionEvent& e, Actor* other)
 {
-	if (DestroyRequested()) 
+	if (DestroyRequested())
 		return;
 
-	if (!IsActive() || !other->IsActive()) 
+	if (!IsActive() || !other->IsActive())
 		return;
 
 	if (other->IsTypeOf<Enemy>())
