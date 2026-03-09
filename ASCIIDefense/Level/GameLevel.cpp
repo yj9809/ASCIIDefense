@@ -7,6 +7,7 @@
 #include "Render/Renderer.h"
 
 #include "Core/Input.h"
+#include "Engine/Engine.h"
 
 #include <iostream>
 #include <string>
@@ -20,29 +21,42 @@ GameLevel::GameLevel()
 
 void GameLevel::Tick(float deltaTime)
 {
+	if (life <= 0)
+	{
+		std::cout << "Game Over!\n";
+		Engine::Get().QuitEngine();
+	}
+
+	currentMousePos = Input::Get().GetMousePosition();
+
 	MoveEnemies();
 
 	super::Tick(deltaTime);
 
 	SpawnEnemies(deltaTime);
 
-	if (Input::Get().GetKeyDown(VK_SPACE))
-		spawnCount = 0;
+	if (Input::Get().GetKeyDown(VK_RBUTTON))
+		RemoveTower(currentMousePos);
+
+
+	RoundButtonClick();
 
 	DebugPath();
 
 	if (Input::Get().GetKeyDown('C'))
 	{
-		towerCraftMode = (towerCraftMode == TowerCraftMode::None) ? TowerCraftMode::Craft : TowerCraftMode::None;
+		towerCraftMode = (towerCraftMode == Mode::None) ? Mode::Craft : Mode::None;
 	}
 
-	if (towerCraftMode == TowerCraftMode::Craft)
+	if (towerCraftMode == Mode::Craft)
 		TowerCrafting(deltaTime);
 }
 
 void GameLevel::Draw()
 {
 	super::Draw();
+
+	DrawUI();
 
 	for (int y = 0; y < grid.size(); ++y)
 	{
@@ -172,9 +186,10 @@ void GameLevel::SetGrid(std::vector<int> line)
 
 void GameLevel::SpawnEnemies(float deltaTime)
 {
-	if (spawner)
+	if (spawner && roundActive)
 	{
-		if (timer > 1.0f && spawnCount < 10)
+		int spawnLimit = 4 + round;
+		if (timer > 1.0f && roundActive && spawnCount < spawnLimit)
 		{
 			std::vector<Enemy*> newEnemies;
 			for (const auto& spawnInfo : spawner->GetSpawnInfos())
@@ -183,15 +198,22 @@ void GameLevel::SpawnEnemies(float deltaTime)
 				enemy->SetPosition(spawnInfo.spawnPoint);
 				AddNewActor(enemy);
 				newEnemies.push_back(enemy);
+				sawnedEnemyCount++;
 			}
 			spawnCount++;
 			timer = 0.0f;
+		}
+		else if (spawnCount >= spawnLimit && sawnedEnemyCount <= 0)
+		{
+			roundActive = false;
+			spawnCount = 0;
+			round++;
 		}
 		else
 		{
 			timer += deltaTime;
 		}
-	}
+	}	
 }
 
 void GameLevel::MoveEnemies()
@@ -286,10 +308,11 @@ void GameLevel::DebugPath()
 		{
 			if (!actor || !actor->IsActive() || !actor->IsTypeOf<Enemy>()) continue;
 			Enemy* e = static_cast<Enemy*>(actor);
-			std::vector<Vector2> path = e->GetRemainingPath();
-			for (const Vector2& p : path)
+			const std::vector<Vector2>& path = e->GetPath();
+			const int startIndex = e->GetCurrentPathIndex();
+			for (int i = startIndex; i < static_cast<int>(path.size()); ++i)
 			{
-				Renderer::Get().Submit("*", p, Color::Gray, 0);
+				Renderer::Get().Submit("*", path[i], Color::Gray, 0);
 			}
 		}
 	}
@@ -297,13 +320,27 @@ void GameLevel::DebugPath()
 
 void GameLevel::TowerCrafting(float deltaTime)
 {
-	Vector2 mousePos = Input::Get().GetMousePosition();
 	if (Input::Get().GetKeyDown(VK_LBUTTON))
 	{
-		TryPlaceTower(mousePos); // 설치 시도
+		TryPlaceTower(currentMousePos); // 설치 시도
+		previewDirty = true;
 	}
 
-	DrawTowerPreview(mousePos);  // 현재 마우스 프리뷰
+	if (currentMousePos != previousMousePos)
+	{
+		previousMousePos = currentMousePos;
+		previewDirty = true;
+	}
+
+	previewRecalcTimer += deltaTime;
+	if (previewDirty && previewRecalcTimer >= previewRecalcInterval)
+	{
+		previewColor = CanPlaceTowerAt(currentMousePos) ? Color::Green : Color::RedBright;
+		previewDirty = false;
+		previewRecalcTimer = 0.0f;
+	}
+
+	DrawTowerPreview(currentMousePos);  // 현재 마우스 프리뷰
 }
 
 bool GameLevel::CanPreviewTowerAt(const Vector2& center) const
@@ -325,11 +362,36 @@ bool GameLevel::CanPreviewTowerAt(const Vector2& center) const
 	return true;
 }
 
+bool GameLevel::CanPlaceTowerAt(const Vector2& center) const
+{
+	if (!CanPreviewTowerAt(center))
+		return false;
+
+	if (spawnPoints.empty())
+		return false;
+
+	int limitY = spawnPoints[0].y - 10;
+
+	if (limitY < center.y + 1)
+		return false;
+
+	auto tempGrid = grid;
+	for (int dy = -1; dy <= 1; ++dy)
+		for (int dx = -1; dx <= 1; ++dx)
+			tempGrid[center.y + dy][center.x + dx] = 2;
+
+	Navigation nav;
+	std::vector<Vector2> path;
+
+	if (!spawner->SetPaths(tempGrid, spawnPoints, endPoints))
+		return false;
+
+	return true;
+}
+
 void GameLevel::DrawTowerPreview(const Vector2& center)
 {
 	if (center.x < 0 || center.y < 0) return;
-
-	Color c = CanPreviewTowerAt(center) ? Color::Green : Color::RedBright;
 
 	for (int dy = -1; dy <= 1; ++dy)
 	{
@@ -337,14 +399,19 @@ void GameLevel::DrawTowerPreview(const Vector2& center)
 		{
 			Vector2 p(center.x + dx, center.y + dy);
 			const char* shape = (dx == 0 && dy == 0) ? "T" : "#";
-			Renderer::Get().Submit(shape, p, c, 1000);
+			Renderer::Get().Submit(shape, p, previewColor, 1000);
 		}
 	}
 }
 
 void GameLevel::TryPlaceTower(const Vector2& center)
 {
-	if (!CanPreviewTowerAt(center)) return;
+	if (gold < 10)
+	{
+		return;
+	}
+
+	if (!CanPlaceTowerAt(center)) return;
 
 	auto rollback = [&]()
 		{
@@ -357,6 +424,26 @@ void GameLevel::TryPlaceTower(const Vector2& center)
 		for (int dx = -1; dx <= 1; ++dx)
 			grid[center.y + dy][center.x + dx] = 2;
 
+	if (!RebuildPath(&center))
+	{
+		rollback();
+		return;
+	}
+
+	gold -= 10;
+
+	Actor* t = AddNewActorReturn(new Tower(center, towerUpgrade));
+	int64_t key = CenterToKey(center);
+	towerMap[key] = t;
+}
+
+bool GameLevel::RebuildPath(const Vector2* changedCenter)
+{
+	if (!spawner->SetPaths(grid, spawnPoints, endPoints))
+	{
+		return false;
+	}
+
 	std::vector<std::pair<Enemy*, std::vector<Vector2>>> pending;
 	Navigation nav;
 
@@ -365,19 +452,40 @@ void GameLevel::TryPlaceTower(const Vector2& center)
 		if (!actor || !actor->IsActive() || !actor->IsTypeOf<Enemy>()) continue;
 		Enemy* e = static_cast<Enemy*>(actor);
 
+		if (changedCenter)
+		{
+			auto isInsideTowerArea = [changedCenter](const Vector2& p)
+				{
+					return p.x >= changedCenter->x - 1 && p.x <= changedCenter->x + 1
+						&& p.y >= changedCenter->y - 1 && p.y <= changedCenter->y + 1;
+				};
+
+			bool affected = isInsideTowerArea(*e->GetPosition());
+			if (!affected)
+			{
+				const std::vector<Vector2>& path = e->GetPath();
+				const int startIndex = e->GetCurrentPathIndex();
+				for (int i = startIndex; i < static_cast<int>(path.size()); ++i)
+				{
+					if (isInsideTowerArea(path[i]))
+					{
+						affected = true;
+						break;
+					}
+				}
+			}
+
+			if (!affected)
+				continue;
+		}
+
 		std::vector<Vector2> newPath;
 		if (!nav.FindPath(*e->GetPosition(), e->GetEndPosition(), grid, newPath))
 		{
-			rollback();
-			return;
+			return false;
 		}
-		pending.emplace_back(e, std::move(newPath));
-	}
 
-	if (!spawner->SetPaths(grid, spawnPoints, endPoints))
-	{
-		rollback();
-		return;
+		pending.emplace_back(e, std::move(newPath));
 	}
 
 	for (auto& [enemy, path] : pending)
@@ -386,5 +494,172 @@ void GameLevel::TryPlaceTower(const Vector2& center)
 			enemy->SetPath(std::move(path));
 	}
 
-	AddNewActor(new Tower(center));
+	return true;
 }
+
+int64_t GameLevel::Vector2ToKey(const Vector2& center)
+{
+	return (static_cast<int64_t>(center.x) << 32) | static_cast<uint32_t>(center.y);
+}
+
+int64_t GameLevel::CenterToKey(const Vector2& center)
+{
+	int64_t key = Vector2ToKey(center);
+
+	for (int i = 0; i < 9; i++)
+	{
+		int x = center.x + (i % 3 - 1);
+		int y = center.y + (i / 3 - 1);
+
+		int64_t adjacentKey = Vector2ToKey(Vector2(x, y));
+		centerKeyMap[adjacentKey] = center; // 인접한 좌표도 같은 key로 매핑
+	}
+
+	return key;
+}
+
+void GameLevel::RemoveTower(const Vector2& pos)
+{
+	int64_t key = Vector2ToKey(pos);
+
+	if (towerMap.find(key) != towerMap.end())
+	{
+		for (int i = 0; i < 9; i++)
+		{
+			int x = pos.x + (i % 3 - 1);
+			int y = pos.y + (i / 3 - 1);
+
+			grid[y][x] = 0; // 그리드에서 제거
+			centerKeyMap.erase(Vector2ToKey(Vector2(x, y))); // centerKeyMap에서 제거
+		}
+
+		if (!RebuildPath())
+			return;
+
+		towerMap[key]->Destroy();
+		towerMap.erase(key);
+		gold += 10;
+	}
+
+	if (centerKeyMap.find(key) != centerKeyMap.end())
+	{
+		Vector2 centerVector = centerKeyMap[key];
+
+		for (int i = 0; i < 9; i++)
+		{
+			int x = centerVector.x + (i % 3 - 1);
+			int y = centerVector.y + (i / 3 - 1);
+
+			grid[y][x] = 0; // 그리드에서 제거
+			centerKeyMap.erase(Vector2ToKey(Vector2(x, y))); // centerKeyMap에서 제거
+		}
+
+		int64_t centerKey = Vector2ToKey(centerVector);
+
+		if (!RebuildPath())
+			return;
+
+		towerMap[centerKey]->Destroy();
+		towerMap.erase(centerKey);
+		gold += 10;
+	}
+}
+
+void GameLevel::DrawUI()
+{
+	Color buttonColor = Color::White;
+	Color upgradeButtonColor = Color::White;
+
+	if (roundActive)
+	{
+		buttonColor = Color::Gray;
+	}
+
+	if (!roundActive && hover)
+	{
+		buttonColor = Color::Yellow;
+	}
+	else if (!roundActive)
+	{
+		buttonColor = Color::White;
+	}
+
+	if (upgradeHover)
+	{
+		upgradeButtonColor = Color::Yellow;
+
+	}
+	else
+	{
+		upgradeButtonColor = Color::White;
+	}
+
+	sprintf_s(lifeText, "Life: %d", life);
+	sprintf_s(goldText, "Gold: %d", gold);
+	sprintf_s(roundText, "Round: %d", round);
+	sprintf_s(spawnText, "Spawned: %d/%d", sawnedEnemyCount, (4 + round) * 10);
+	sprintf_s(towerUpgradeText, "Tower Upgrade: %d", towerUpgrade);
+	sprintf_s(enemyHpText, "Enemy HP: %d", 10 + ((round - 1) * (5 * (1 + (round / 3)))));
+	sprintf_s(towerDamage, "Tower Damage: %d", 5 + (towerUpgrade * 5));
+
+	Renderer::Get().Submit(lifeText, Vector2(30, 0), Color::RedBright, 1000);
+	Renderer::Get().Submit(goldText, Vector2(30, 1), Color::Yellow, 1000);
+	Renderer::Get().Submit(roundText, Vector2(30, 2), Color::White, 1000);
+	Renderer::Get().Submit(spawnText, Vector2(30, 3), Color::White, 1000);
+	Renderer::Get().Submit(towerUpgradeText, Vector2(30, 4), Color::White, 1000);
+
+	Renderer::Get().Submit(enemyHpText, Vector2(30, 7), Color::White, 1000);
+	Renderer::Get().Submit(towerDamage, Vector2(30, 8), Color::White, 1000);
+
+	Renderer::Get().Submit("[Start Round]", Vector2(30, 15), buttonColor, 1000);
+	Renderer::Get().Submit("[Tower Upgrad]", Vector2(30, 16), upgradeButtonColor, 1000);
+	Renderer::Get().Submit(
+		"Help\nPress C to enter tower placement mode.\nPlacing a tower costs 10 Gold each.\nThe tower upgrade cost is 50 Gold."
+		, Vector2(30, 35), Color::Gray, 1000);
+
+}
+
+void GameLevel::RoundButtonClick()
+{
+	if (currentMousePos.x >= 30 && currentMousePos.x <= 42 && currentMousePos.y == 15 && !roundActive)
+	{
+		hover = true;
+	}
+	else
+	{
+		hover = false;
+	}
+
+	if (currentMousePos.x >= 30 && currentMousePos.x <= 43 && currentMousePos.y == 16)
+	{
+		upgradeHover = true;
+
+	}
+	else
+	{
+		upgradeHover = false;
+	}
+
+
+	if (hover && !roundActive && Input::Get().GetKeyDown(VK_LBUTTON))
+	{
+		spawnCount = 0;
+		roundActive = true;
+	}
+
+	if (upgradeHover && Input::Get().GetKeyDown(VK_LBUTTON) && gold >= 50)
+	{
+		gold -= 50;
+		towerUpgrade++;
+
+		for (auto& t : towerMap)
+		{
+			if (t.second && t.second->IsActive() && t.second->IsTypeOf<Tower>())
+			{
+				Tower* tower = static_cast<Tower*>(t.second);
+				tower->UpgradeAttack();
+			}
+		}
+	}
+}
+

@@ -9,7 +9,7 @@ class Tower : public Actor
 	RTTI_DECLARATIONS(Tower, Actor)
 
 public:
-	Tower(const Vector2& position);
+	Tower(const Vector2& position, int attackUpgrad);
 
 	virtual void Tick(float deltaTime) override;
 
@@ -17,11 +17,15 @@ public:
 
 	int DirectionIndex(const Vector2& myPos, const Vector2& targetPos);
 
+	inline void UpgradeAttack() { attockUpgrade++; }
+
 private:
 	Vector2 centerPosition;
 
 	int range = 3;
 
 	float timer = 0.0f;
+
+	int attockUpgrade = 0;
 };
 

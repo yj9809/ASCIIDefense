@@ -19,12 +19,13 @@ static std::vector<std::vector<int>> directions = {
 	{ 1, 1 } // 우하
 };
 
-Tower::Tower(const Vector2& position)
+Tower::Tower(const Vector2& position, int attackUpgrad)
 	: Actor("###\n#T#\n###", Vector2(position.x - 1, position.y - 1), Color::Yellow)
 {
 	sortingOrder = 1;
 
 	centerPosition = position;
+	attockUpgrade = attackUpgrad;
 }
 
 void Tower::Tick(float deltaTime)
@@ -34,7 +35,7 @@ void Tower::Tick(float deltaTime)
 		centerPosition
 	);
 
-	if (timer >= 1.0f && e)
+	if (timer >= 0.7f && e)
 	{
 		int idx = DirectionIndex(centerPosition, *e->GetPosition());
 
@@ -43,7 +44,7 @@ void Tower::Tick(float deltaTime)
 			return;
 		}
 
-		GetOwner()->AddNewActor(new Bullet(centerPosition, idx, directions[idx]));
+		GetOwner()->AddNewActor(new Bullet(centerPosition, idx, directions[idx], attockUpgrade));
 		timer = 0.0f;
 	}
 	else 

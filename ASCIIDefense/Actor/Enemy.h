@@ -32,8 +32,13 @@ public:
 			agent->SetPath(std::move(newPath));
 	}
 
+	// Setter.
+	inline void SetHp(int newHp) { hp -= newHp; }
+
 	// Getter.
 	std::vector<Vector2> GetRemainingPath() const;
+	const std::vector<Vector2>& GetPath() const;
+	int GetCurrentPathIndex() const;
 
 	inline const Vector2 GetEndPosition() const { return endPosition; }
 
@@ -43,6 +48,8 @@ private:
 	std::vector<Vector2> path;
 
 	Vector2 endPosition;
+
+	int hp = 30;
 
 	float timer = 0.0f;
 };

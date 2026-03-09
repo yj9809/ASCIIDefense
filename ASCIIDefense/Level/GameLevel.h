@@ -2,20 +2,24 @@
 
 #include "Level/Level.h"
 #include "Math/Vector2.h"
+#include "Math/Color.h"
 #include "Manager/Spawner.h"
 
 #include <vector>
 #include <memory>
 #include <functional>
+#include <unordered_map>
 
 using namespace Wanted;
 
 class Enemy;
+class Tower;
 
 class GameLevel : public Level
 {
 private:
-	enum class TowerCraftMode
+
+	enum class Mode
 	{
 		None,
 		Craft
@@ -34,6 +38,14 @@ public:
 	Enemy* FindClosestEnemyInRange(const std::function<bool(const Vector2&)>& inRange, const Vector2& center) const;
 
 	std::vector<std::vector<int>> GetGrid() const { return grid; }
+
+	inline void SetLife() { life--; }
+
+	inline void AddGold() { gold += 1; }
+
+	inline void EnemyDestroy() { sawnedEnemyCount--; }
+
+	inline int GetRound() const { return round; }
 private:
 	void SetGrid(std::vector<int> line);
 
@@ -46,9 +58,21 @@ private:
 	void TowerCrafting(float deltaTime);
 
 	bool CanPreviewTowerAt(const Vector2& center) const;
+	bool CanPlaceTowerAt(const Vector2& center) const;
 	void DrawTowerPreview(const Vector2& center);
 
 	void TryPlaceTower(const Vector2& center);
+	bool RebuildPath(const Vector2* changedCenter = nullptr);
+
+	int64_t Vector2ToKey(const Vector2& center);
+
+	int64_t CenterToKey(const Vector2& center);
+
+	void RemoveTower(const Vector2& pos);
+
+	void DrawUI();
+
+	void RoundButtonClick();
 
 private:
 	// 맵 데이터를 저장하는 2D 벡터.
@@ -64,10 +88,40 @@ private:
 	// 적 생성 관리 객체.
 	std::unique_ptr<Spawner> spawner;
 
-	TowerCraftMode towerCraftMode = TowerCraftMode::None;
+	Mode towerCraftMode = Mode::None;
+
+	Color previewColor = Color::RedBright;
+
+	Vector2 currentMousePos;
+	Vector2 previousMousePos;
+	bool previewDirty = true;
+	float previewRecalcTimer = 0.0f;
+	float previewRecalcInterval = 0.05f;
+
+	std::unordered_map<int64_t, Vector2> centerKeyMap;
+	std::unordered_map<int64_t, Actor*> towerMap;
 
 	bool isDebugPath = false;
 	int spawnCount = 10;
 	float timer = 0.0f;
+
+	bool roundActive = false;
+
+	bool hover = false;
+	bool upgradeHover = false;
+
+	int life = 10;
+	int gold = 100;
+	int round = 1;
+	int sawnedEnemyCount = 0;
+	int towerUpgrade = 0;
+
+	char lifeText[32] = {};
+	char goldText[32] = {};
+	char roundText[32] = {};
+	char spawnText[32] = {};
+	char towerUpgradeText[32] = {};
+	char enemyHpText[32] = {};
+	char towerDamage[32] = {};
 };
 

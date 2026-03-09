@@ -1,6 +1,8 @@
 #include "Goal.h"
 #include "Enemy.h"
 
+#include "Level/GameLevel.h"
+
 Goal::Goal(const Vector2& position)
 	: super("G", position, Color::Green)
 {
@@ -21,6 +23,8 @@ void Goal::OnCollision(const CollisionEvent& e, Actor* other)
 
 	if (other->IsTypeOf<Enemy>())
 	{
+		GetOwner()->As<GameLevel>()->SetLife();
+		GetOwner()->As<GameLevel>()->EnemyDestroy();
 		other->Destroy();
 	}
 }

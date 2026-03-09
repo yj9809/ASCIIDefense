@@ -7,7 +7,7 @@ Spawner::Spawner()
 	Util::SetRandomSeed();
 }
 
-bool Spawner::SetPaths(const std::vector<std::vector<int>>& grid, std::vector<Vector2> spawnPoints, std::vector<Vector2> endPoints)
+bool Spawner::SetPaths(const std::vector<std::vector<int>>& grid, const std::vector<Vector2>& spawnPoints, const std::vector<Vector2>& endPoints)
 {
 	std::vector<SpawnInfo> newSpawnInfos;
 

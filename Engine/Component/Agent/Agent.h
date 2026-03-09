@@ -27,6 +27,9 @@ namespace Wanted
 
 		inline void SetIsMoving(bool moving) { isMoving = moving; }
 
+		inline const std::vector<Vector2>& GetPath() const { return path; }
+		inline int GetCurrentPathIndex() const { return currentPathIndex; }
+
 		// Getter.
 		inline std::vector<Vector2> GetRemainingPath() const
 		{

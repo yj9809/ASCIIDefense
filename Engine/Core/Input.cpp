@@ -17,9 +17,9 @@ namespace Wanted
 			DWORD mode = 0;
 			if (GetConsoleMode(hIn, &mode))
 			{
-				mode |= ENABLE_EXTENDED_FLAGS;   // Quick Edit Á¦¾î °¡´É
-				mode |= ENABLE_MOUSE_INPUT;      // ¸¶¿ì½º ÀÌº¥Æ® ¼ö½Å
-				mode &= ~ENABLE_QUICK_EDIT_MODE; // Quick Edit ²ô±â
+				mode |= ENABLE_EXTENDED_FLAGS;   // Quick Edit ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+				mode |= ENABLE_MOUSE_INPUT;      // ï¿½ï¿½ï¿½ì½º ï¿½Ìºï¿½Æ® ï¿½ï¿½ï¿½ï¿½
+				mode &= ~ENABLE_QUICK_EDIT_MODE; // Quick Edit ï¿½ï¿½ï¿½
 				SetConsoleMode(hIn, mode);
 			}
 		}
