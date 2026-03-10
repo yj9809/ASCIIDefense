@@ -35,7 +35,7 @@ void Tower::Tick(float deltaTime)
 		centerPosition
 	);
 
-	if (timer >= 0.7f && e)
+	if (timer >= 1.0f && e)
 	{
 		int idx = DirectionIndex(centerPosition, *e->GetPosition());
 

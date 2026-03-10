@@ -124,7 +124,7 @@ namespace Wanted
 		int localX = 0;
 		int localY = 0;
 
-		for (char* p = command.text; *p != '\0'; ++p)
+		for (const char* p = command.text; *p != '\0'; ++p)
 		{
 			const char ch = *p;
 

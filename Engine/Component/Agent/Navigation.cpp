@@ -10,24 +10,29 @@
 
 namespace Wanted
 {
-	Navigation::~Navigation()
+	bool Navigation::FindPath(
+		const Vector2& start, 
+		const Vector2& target, 
+		const std::vector<std::vector<int>>& grid, 
+		std::vector<Vector2>& outPath,
+		float hNoise
+	)
 	{
-		ClearLists();
-	}
-
-	bool Navigation::FindPath(const Vector2& start, const Vector2& target, const std::vector<std::vector<int>>& grid, std::vector<Vector2>& outPath)
-	{
-		ClearLists();
 		outPath.clear();
 
 		if (IsGridRange(start, grid) || IsGridRange(target, grid))
 		{
 			return false;
-		}
+		}		
 
 		const int height = static_cast<int>(grid.size());
 		const int width = static_cast<int>(grid[0].size());
 		const float kInf = std::numeric_limits<float>::infinity();
+
+		std::vector<std::vector<float>> cellNoise(height, std::vector<float>(width, 0.0f));
+		for (int y = 0; y < height; ++y)
+			for (int x = 0; x < width; ++x)
+				cellNoise[y][x] = Util::RandomRange(0.0f, hNoise);
 
 		struct OpenEntry
 		{
@@ -64,7 +69,7 @@ namespace Wanted
 		};
 
 		bestG[start.y][start.x] = 0.0f;
-		openQueue.push(OpenEntry{ GetHCost(start, target), 0.0f, start });
+		openQueue.push(OpenEntry{ GetHCost(start, target, hNoise), 0.0f, start });
 
 		while (!openQueue.empty())
 		{
@@ -135,7 +140,7 @@ namespace Wanted
 					}
 				}
 
-				float nextGCost = bestG[cy][cx] + dir.cost;
+				float nextGCost = bestG[cy][cx] + dir.cost + cellNoise[nextY][nextX];
 				if (nextGCost >= bestG[nextY][nextX])
 				{
 					continue;
@@ -144,7 +149,7 @@ namespace Wanted
 				bestG[nextY][nextX] = nextGCost;
 				parent[nextY][nextX] = current.position;
 
-				const float hCost = GetHCost(nextPosition, target);
+				const float hCost = GetHCost(nextPosition, target, hNoise);
 				openQueue.push(OpenEntry{ nextGCost + hCost, nextGCost, nextPosition });
 			}
 		}
@@ -167,59 +172,12 @@ namespace Wanted
 		return false;
 	}
 
-	float Navigation::GetHCost(const Vector2& position, const Vector2& target) const
+	float Navigation::GetHCost(const Vector2& position, const Vector2& target, float noise) const
 	{
 		float dx = static_cast<float>(std::abs(position.x - target.x));
 		float dy = static_cast<float>(std::abs(position.y - target.y));
 
-		return (dx + dy) + (DIAGONAL_COST - 2.0f) * std::min(dx, dy);
-	}
-
-	bool Navigation::IsCloseToTarget(const Vector2& position, float cost) const
-	{
-		for (Node* node : closedList)
-		{
-			if (node->position == position && node->gCost <= cost)
-			{
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	std::vector<Vector2> Navigation::ConstructPath(Node* target)
-	{
-		std::vector<Vector2> path;
-		Node* currentNode = target;
-		while (currentNode->parent != nullptr)
-		{
-			path.push_back(currentNode->position);
-			currentNode = currentNode->parent;
-		}
-		std::reverse(path.begin(), path.end());
-		return path;
-	}
-	void Navigation::ClearLists()
-	{
-		if (openList.size() > 0)
-		{
-			for (Node* node : openList)
-			{
-				SafeDelete(node);
-			}
-			openList.clear();
-		}
-
-		if (closedList.size() > 0)
-		{
-			for (Node* node : closedList)
-			{
-				SafeDelete(node);
-			}
-			closedList.clear();
-		}
-
-		startNode = nullptr;
+		const float tie = 1.0f + (1.0f / 1000.0f);
+		return ((dx + dy) + (DIAGONAL_COST - 2.0f) * std::min(dx, dy)) * tie + noise;
 	}
 }

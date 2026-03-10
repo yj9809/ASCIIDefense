@@ -107,6 +107,7 @@
     <ClInclude Include="Actor\Goal.h" />
     <ClInclude Include="Actor\Tower.h" />
     <ClInclude Include="Actor\Wall.h" />
+    <ClInclude Include="Util\GridUtil.h" />
     <ClInclude Include="Level\GameLevel.h" />
     <ClInclude Include="Manager\Spawner.h" />
   </ItemGroup>

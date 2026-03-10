@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include "Math/Vector2.h"
-#include "Node.h"
 #include "Component/Component.h"
 
 #include <memory>

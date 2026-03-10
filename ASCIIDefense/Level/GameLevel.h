@@ -9,6 +9,7 @@
 #include <memory>
 #include <functional>
 #include <unordered_map>
+#include <queue>
 
 using namespace Wanted;
 
@@ -63,8 +64,10 @@ private:
 
 	void TryPlaceTower(const Vector2& center);
 	bool RebuildPath(const Vector2* changedCenter = nullptr);
+	void ProcessPathRebuildQueue();
 
 	int64_t Vector2ToKey(const Vector2& center);
+	std::pair<int, int> ToMoveKey(const Vector2& p);
 
 	int64_t CenterToKey(const Vector2& center);
 
@@ -95,17 +98,13 @@ private:
 	Vector2 currentMousePos;
 	Vector2 previousMousePos;
 	bool previewDirty = true;
-	float previewRecalcTimer = 0.0f;
-	float previewRecalcInterval = 0.05f;
 
 	std::unordered_map<int64_t, Vector2> centerKeyMap;
 	std::unordered_map<int64_t, Actor*> towerMap;
 
-	bool isDebugPath = false;
-	int spawnCount = 10;
-	float timer = 0.0f;
+	std::queue<Enemy*> pathRebuildQueue;
 
-	bool roundActive = false;
+	bool isDebugPath = false;
 
 	bool hover = false;
 	bool upgradeHover = false;

@@ -1,9 +1,0 @@
-﻿[Agent 병목 대응 메모]
-
-1. openList(vector)를 priority_queue로 교체
-2. Node* 중심 로직을 gScore/closed/cameFrom 2D 버퍼 중심으로 전환
-3. priority_queue 특성상 중복 push 허용, pop 시 stale(cur.g > gScore[cur]) 스킵
-4. ConstructPath를 parent 포인터 체인 대신 cameFrom 역추적으로 변경
-5. FindPath 초반 입력 검증(start/target 범위, blocked)과 실패 시 outPath.clear() 보장
-6. DIAGONAL_COST 매크로를 constexpr로 교체
-7. 코너 끼워지기 체크 유지(대각 이동 시 인접 2칸 막힘이면 이동 금지)

@@ -98,9 +98,6 @@
     <ClInclude Include="Component\Agent\Agent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Component\Agent\Node.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Component\Agent\Navigation.h">
       <Filter>Header Files</Filter>
     </ClInclude>

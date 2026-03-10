@@ -1,11 +1,14 @@
-﻿#include "GameLevel.h"
+﻿#define NOMINMAX
+
+#include "GameLevel.h"
 #include "Actor/Bullet.h"
 #include "Actor/Enemy.h"
 #include "Actor/Wall.h"
 #include "Actor/Goal.h"
 #include "Actor/Tower.h"
-#include "Render/Renderer.h"
+#include "Util/GridUtil.h"
 
+#include "Render/Renderer.h"
 #include "Core/Input.h"
 #include "Engine/Engine.h"
 
@@ -50,6 +53,8 @@ void GameLevel::Tick(float deltaTime)
 
 	if (towerCraftMode == Mode::Craft)
 		TowerCrafting(deltaTime);
+
+	ProcessPathRebuildQueue();
 }
 
 void GameLevel::Draw()
@@ -114,7 +119,7 @@ void GameLevel::LoadMap(const char* mapFile)
 
 		if (mapCharacter == '\n')
 		{
-			maxWidth = max(maxWidth, position.x);
+			maxWidth = std::max(maxWidth, position.x);
 			++position.y;
 			position.x = 0;
 			SetGrid(line);
@@ -186,34 +191,20 @@ void GameLevel::SetGrid(std::vector<int> line)
 
 void GameLevel::SpawnEnemies(float deltaTime)
 {
-	if (spawner && roundActive)
+
+	if (!spawner) return;
+
+	for (Enemy* e : spawner->Update(deltaTime, round, sawnedEnemyCount))
 	{
-		int spawnLimit = 4 + round;
-		if (timer > 1.0f && roundActive && spawnCount < spawnLimit)
-		{
-			std::vector<Enemy*> newEnemies;
-			for (const auto& spawnInfo : spawner->GetSpawnInfos())
-			{
-				Enemy* enemy = new Enemy(spawnInfo.path, spawnInfo.endPoint);
-				enemy->SetPosition(spawnInfo.spawnPoint);
-				AddNewActor(enemy);
-				newEnemies.push_back(enemy);
-				sawnedEnemyCount++;
-			}
-			spawnCount++;
-			timer = 0.0f;
-		}
-		else if (spawnCount >= spawnLimit && sawnedEnemyCount <= 0)
-		{
-			roundActive = false;
-			spawnCount = 0;
-			round++;
-		}
-		else
-		{
-			timer += deltaTime;
-		}
-	}	
+		AddNewActor(e);
+		sawnedEnemyCount++;
+	}
+
+	if (spawner->IsRoundFinished(sawnedEnemyCount))
+	{
+		round++;
+		spawner->StopRound(); // roundActive = false
+	}
 }
 
 void GameLevel::MoveEnemies()
@@ -224,8 +215,6 @@ void GameLevel::MoveEnemies()
 	std::map<Key, std::vector<Enemy*>> fromMap;
 	std::set<Key> willVacate; // 이번 틱에 비워질 from 좌표
 
-	auto toKey = [](const Vector2& p) -> Key { return { p.x, p.y }; };
-
 	// 1) 수집 + 초기화
 	for (Actor* actor : actors)
 	{
@@ -234,8 +223,8 @@ void GameLevel::MoveEnemies()
 		Enemy* e = static_cast<Enemy*>(actor);
 		e->SetIsMoving(false);
 
-		Key from = toKey(*e->GetPosition());
-		Key to = toKey(e->NextPosition());
+		Key from = ToMoveKey(*e->GetPosition());
+		Key to = ToMoveKey(e->NextPosition());
 
 		fromMap[from].push_back(e);
 
@@ -264,7 +253,7 @@ void GameLevel::MoveEnemies()
 			candidate = group[winner];
 		}
 
-		Key from = toKey(*candidate->GetPosition());
+		Key from = ToMoveKey(*candidate->GetPosition());
 
 		// 자기 자리 유지(to==from)는 통과 (원하면 skip 처리)
 		if (to == from)
@@ -281,10 +270,16 @@ void GameLevel::MoveEnemies()
 			bool blocked = false;
 			for (Enemy* occ : occIt->second)
 			{
-				Key occFrom = toKey(*occ->GetPosition());
+				Key occFrom = ToMoveKey(*occ->GetPosition());
+
+				// 맞교환 감지: 점유자의 목적지가 내 현재 위치면 서로 통과 허용
+				Key occTo = ToMoveKey(occ->NextPosition());
+				if (occTo == from)
+					continue; // 맞교환이면 차단하지 않음
+
 				if (willVacate.find(occFrom) == willVacate.end())
 				{
-					blocked = true; // 점유자가 안 비우면 진입 불가
+					blocked = true;
 					break;
 				}
 			}
@@ -322,7 +317,7 @@ void GameLevel::TowerCrafting(float deltaTime)
 {
 	if (Input::Get().GetKeyDown(VK_LBUTTON))
 	{
-		TryPlaceTower(currentMousePos); // 설치 시도
+		TryPlaceTower(currentMousePos);
 		previewDirty = true;
 	}
 
@@ -332,15 +327,13 @@ void GameLevel::TowerCrafting(float deltaTime)
 		previewDirty = true;
 	}
 
-	previewRecalcTimer += deltaTime;
-	if (previewDirty && previewRecalcTimer >= previewRecalcInterval)
+	if (previewDirty)
 	{
 		previewColor = CanPlaceTowerAt(currentMousePos) ? Color::Green : Color::RedBright;
 		previewDirty = false;
-		previewRecalcTimer = 0.0f;
 	}
 
-	DrawTowerPreview(currentMousePos);  // 현재 마우스 프리뷰
+	DrawTowerPreview(currentMousePos);
 }
 
 bool GameLevel::CanPreviewTowerAt(const Vector2& center) const
@@ -376,12 +369,8 @@ bool GameLevel::CanPlaceTowerAt(const Vector2& center) const
 		return false;
 
 	auto tempGrid = grid;
-	for (int dy = -1; dy <= 1; ++dy)
-		for (int dx = -1; dx <= 1; ++dx)
-			tempGrid[center.y + dy][center.x + dx] = 2;
 
-	Navigation nav;
-	std::vector<Vector2> path;
+	GridUtil::Fill3x3(tempGrid, center, 2);
 
 	if (!spawner->SetPaths(tempGrid, spawnPoints, endPoints))
 		return false;
@@ -406,32 +395,18 @@ void GameLevel::DrawTowerPreview(const Vector2& center)
 
 void GameLevel::TryPlaceTower(const Vector2& center)
 {
-	if (gold < 10)
-	{
-		return;
-	}
-
+	if (gold < 10) return;
 	if (!CanPlaceTowerAt(center)) return;
 
-	auto rollback = [&]()
-		{
-			for (int dy = -1; dy <= 1; ++dy)
-				for (int dx = -1; dx <= 1; ++dx)
-					grid[center.y + dy][center.x + dx] = 0;
-		};
+	GridUtil::Fill3x3(grid, center, 2);
 
-	for (int dy = -1; dy <= 1; ++dy)
-		for (int dx = -1; dx <= 1; ++dx)
-			grid[center.y + dy][center.x + dx] = 2;
-
-	if (!RebuildPath(&center))
+	if (!RebuildPath(&center)) // 루프 밖에서 한 번만 호출
 	{
-		rollback();
+		GridUtil::Clear3x3(grid, center);
 		return;
 	}
 
 	gold -= 10;
-
 	Actor* t = AddNewActorReturn(new Tower(center, towerUpgrade));
 	int64_t key = CenterToKey(center);
 	towerMap[key] = t;
@@ -440,12 +415,7 @@ void GameLevel::TryPlaceTower(const Vector2& center)
 bool GameLevel::RebuildPath(const Vector2* changedCenter)
 {
 	if (!spawner->SetPaths(grid, spawnPoints, endPoints))
-	{
 		return false;
-	}
-
-	std::vector<std::pair<Enemy*, std::vector<Vector2>>> pending;
-	Navigation nav;
 
 	for (Actor* actor : actors)
 	{
@@ -454,20 +424,15 @@ bool GameLevel::RebuildPath(const Vector2* changedCenter)
 
 		if (changedCenter)
 		{
-			auto isInsideTowerArea = [changedCenter](const Vector2& p)
-				{
-					return p.x >= changedCenter->x - 1 && p.x <= changedCenter->x + 1
-						&& p.y >= changedCenter->y - 1 && p.y <= changedCenter->y + 1;
-				};
+			bool affected = GridUtil::IsInside3x3(*changedCenter, *e->GetPosition());
 
-			bool affected = isInsideTowerArea(*e->GetPosition());
 			if (!affected)
 			{
 				const std::vector<Vector2>& path = e->GetPath();
 				const int startIndex = e->GetCurrentPathIndex();
 				for (int i = startIndex; i < static_cast<int>(path.size()); ++i)
 				{
-					if (isInsideTowerArea(path[i]))
+					if (GridUtil::IsInside3x3(*changedCenter, path[i]))
 					{
 						affected = true;
 						break;
@@ -479,27 +444,42 @@ bool GameLevel::RebuildPath(const Vector2* changedCenter)
 				continue;
 		}
 
-		std::vector<Vector2> newPath;
-		if (!nav.FindPath(*e->GetPosition(), e->GetEndPosition(), grid, newPath))
-		{
-			return false;
-		}
-
-		pending.emplace_back(e, std::move(newPath));
-	}
-
-	for (auto& [enemy, path] : pending)
-	{
-		if (enemy && enemy->IsActive())
-			enemy->SetPath(std::move(path));
+		pathRebuildQueue.push(e);
 	}
 
 	return true;
 }
 
+void GameLevel::ProcessPathRebuildQueue()
+{
+	int limit = 5;
+	Navigation nav;
+	while (!pathRebuildQueue.empty() && limit > 0)
+	{
+		limit--;
+		Enemy* e = pathRebuildQueue.front();
+		pathRebuildQueue.pop();
+
+		if (!e || !e->IsActive()) continue;
+
+
+		std::vector<Vector2> newPath;
+		float noise = Util::RandomRange(0.0f, 2.5f);
+		if (nav.FindPath(*e->GetPosition(), e->GetEndPosition(), grid, newPath, noise))
+			e->SetPath(std::move(newPath));
+
+	}
+
+}
+
 int64_t GameLevel::Vector2ToKey(const Vector2& center)
 {
 	return (static_cast<int64_t>(center.x) << 32) | static_cast<uint32_t>(center.y);
+}
+
+std::pair<int, int> GameLevel::ToMoveKey(const Vector2& p)
+{
+	return { p.x, p.y };
 }
 
 int64_t GameLevel::CenterToKey(const Vector2& center)
@@ -524,13 +504,13 @@ void GameLevel::RemoveTower(const Vector2& pos)
 
 	if (towerMap.find(key) != towerMap.end())
 	{
+		GridUtil::Clear3x3(grid, Vector2(pos.x, pos.y));
 		for (int i = 0; i < 9; i++)
 		{
 			int x = pos.x + (i % 3 - 1);
 			int y = pos.y + (i / 3 - 1);
 
-			grid[y][x] = 0; // 그리드에서 제거
-			centerKeyMap.erase(Vector2ToKey(Vector2(x, y))); // centerKeyMap에서 제거
+			centerKeyMap.erase(Vector2ToKey(Vector2(x, y)));
 		}
 
 		if (!RebuildPath())
@@ -539,18 +519,19 @@ void GameLevel::RemoveTower(const Vector2& pos)
 		towerMap[key]->Destroy();
 		towerMap.erase(key);
 		gold += 10;
+		return;
 	}
 
 	if (centerKeyMap.find(key) != centerKeyMap.end())
 	{
 		Vector2 centerVector = centerKeyMap[key];
 
+		GridUtil::Clear3x3(grid, centerVector);
 		for (int i = 0; i < 9; i++)
 		{
 			int x = centerVector.x + (i % 3 - 1);
 			int y = centerVector.y + (i / 3 - 1);
 
-			grid[y][x] = 0; // 그리드에서 제거
 			centerKeyMap.erase(Vector2ToKey(Vector2(x, y))); // centerKeyMap에서 제거
 		}
 
@@ -570,36 +551,24 @@ void GameLevel::DrawUI()
 	Color buttonColor = Color::White;
 	Color upgradeButtonColor = Color::White;
 
-	if (roundActive)
-	{
+	if (spawner->IsActive())
 		buttonColor = Color::Gray;
-	}
-
-	if (!roundActive && hover)
-	{
+	else if (hover)
 		buttonColor = Color::Yellow;
-	}
-	else if (!roundActive)
-	{
+	else
 		buttonColor = Color::White;
-	}
 
 	if (upgradeHover)
-	{
 		upgradeButtonColor = Color::Yellow;
-
-	}
 	else
-	{
 		upgradeButtonColor = Color::White;
-	}
 
 	sprintf_s(lifeText, "Life: %d", life);
 	sprintf_s(goldText, "Gold: %d", gold);
 	sprintf_s(roundText, "Round: %d", round);
 	sprintf_s(spawnText, "Spawned: %d/%d", sawnedEnemyCount, (4 + round) * 10);
 	sprintf_s(towerUpgradeText, "Tower Upgrade: %d", towerUpgrade);
-	sprintf_s(enemyHpText, "Enemy HP: %d", 10 + ((round - 1) * (5 * (1 + (round / 3)))));
+	sprintf_s(enemyHpText, "Enemy HP: %d", 10 + (round - 1) * (round - 1) * 3);
 	sprintf_s(towerDamage, "Tower Damage: %d", 5 + (towerUpgrade * 5));
 
 	Renderer::Get().Submit(lifeText, Vector2(30, 0), Color::RedBright, 1000);
@@ -614,14 +583,14 @@ void GameLevel::DrawUI()
 	Renderer::Get().Submit("[Start Round]", Vector2(30, 15), buttonColor, 1000);
 	Renderer::Get().Submit("[Tower Upgrad]", Vector2(30, 16), upgradeButtonColor, 1000);
 	Renderer::Get().Submit(
-		"Help\nPress C to enter tower placement mode.\nPlacing a tower costs 10 Gold each.\nThe tower upgrade cost is 50 Gold."
+		"Help\nPress C to enter tower placement mode.\nPlacing a tower costs 10 Gold each.\nThe tower upgrade cost is 100 Gold."
 		, Vector2(30, 35), Color::Gray, 1000);
 
 }
 
 void GameLevel::RoundButtonClick()
 {
-	if (currentMousePos.x >= 30 && currentMousePos.x <= 42 && currentMousePos.y == 15 && !roundActive)
+	if (currentMousePos.x >= 30 && currentMousePos.x <= 42 && currentMousePos.y == 15 && !spawner->IsActive())
 	{
 		hover = true;
 	}
@@ -640,16 +609,13 @@ void GameLevel::RoundButtonClick()
 		upgradeHover = false;
 	}
 
-
-	if (hover && !roundActive && Input::Get().GetKeyDown(VK_LBUTTON))
+	if (hover && !spawner->IsActive() && Input::Get().GetKeyDown(VK_LBUTTON))  // !roundActive 대체
 	{
-		spawnCount = 0;
-		roundActive = true;
+		spawner->StartRound(round);
 	}
-
-	if (upgradeHover && Input::Get().GetKeyDown(VK_LBUTTON) && gold >= 50)
+	if (upgradeHover && Input::Get().GetKeyDown(VK_LBUTTON) && gold >= 100)
 	{
-		gold -= 50;
+		gold -= 100;
 		towerUpgrade++;
 
 		for (auto& t : towerMap)

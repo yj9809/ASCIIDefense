@@ -20,7 +20,7 @@ void Enemy::BeginPlay()
 
 	agent = AddComponent<Agent>(std::move(path));
 	int round = GetOwner()->As<GameLevel>()->GetRound();
-	hp = 10 + ((round - 1) * (5 * (1 + (round / 3))));
+	hp = 10 + (round - 1) * (round - 1) * 3;
 }
 
 void Enemy::Tick(float deltaTime)
